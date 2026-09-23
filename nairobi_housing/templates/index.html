@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Nairobi Property Prices</title>
+	<style>
+		:root { color-scheme: light; font-family: Arial, sans-serif; }
+		body { background: #f4f6f8; color: #1f2933; margin: 0; padding: 24px; }
+		.container { margin: auto; max-width: 1200px; }
+		.card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px #0000001a; margin-bottom: 20px; padding: 20px; }
+		h1 { color: #1a3d7c; }
+		.form-row { align-items: end; display: flex; flex-wrap: wrap; gap: 15px; }
+		label { color: #333; display: block; font-weight: 600; margin-bottom: 5px; }
+		input, select { border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; min-width: 140px; padding: 8px; }
+		button { background: #1a3d7c; border: 0; border-radius: 4px; color: #fff; cursor: pointer; font-size: 15px; padding: 10px 20px; }
+		button:hover { background: #15305e; }
+		button:disabled { background: #8995a7; cursor: not-allowed; }
+		#result { color: #0a7a3e; font-size: 22px; font-weight: bold; margin-top: 15px; }
+		.error { background: #fff1f0; border-left: 4px solid #c0392b; color: #8a1c13; padding: 12px; }
+		.table-wrap { overflow-x: auto; }
+		table { border-collapse: collapse; min-width: 650px; width: 100%; }
+		th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; }
+		th { background: #1a3d7c; color: #fff; }
+		tr:hover { background: #f9f9f9; }
+	</style>
+</head>
+<body>
+	<main class="container">
+		<h1>Nairobi Property Prices</h1>
+		<section class="card">
+			<h2>Estimate a Price</h2>
+			{% if error %}<p class="error">{{ error }}</p>{% endif %}
+			<div class="form-row">
+				<div><label for="bedroom">Bedrooms</label><input id="bedroom" type="number" value="3" min="1" max="10"></div>
+				<div><label for="bathroom">Bathrooms</label><input id="bathroom" type="number" value="2" min="1" max="10"></div>
+				<div><label for="location">Location</label><select id="location" {% if not locations %}disabled{% endif %}>{% for location in locations %}<option value="{{ location }}">{{ location }}</option>{% endfor %}</select></div>
+				<div><label for="property_type">Property Type</label><select id="property_type" {% if not property_types %}disabled{% endif %}>{% for property_type in property_types %}<option value="{{ property_type }}">{{ property_type }}</option>{% endfor %}</select></div>
+				<button type="button" onclick="predict()" {% if error %}disabled{% endif %}>Predict Price</button>
+			</div>
+			<div id="result" role="status"></div>
+		</section>
+		<section class="card">
+			<h2>Available Listings</h2>
+			{% if listings %}<div class="table-wrap"><table>
+				<thead><tr><th>Location</th><th>Type</th><th>Bedrooms</th><th>Bathrooms</th><th>Price (KSh)</th></tr></thead>
+				<tbody>{% for listing in listings %}<tr>
+					<td>{{ listing.get('Location', '') }}</td><td>{{ listing.get('propertyType', '') }}</td><td>{{ listing.get('Bedroom', '') }}</td><td>{{ listing.get('bathroom', '') }}</td><td>{{ "{:,.0f}".format(listing.get('Price', 0)) }}</td>
+				</tr>{% endfor %}</tbody>
+			</table></div>{% else %}<p>No listings are available until the training artifacts are created.</p>{% endif %}
+		</section>
+	</main>
+	<script>
+		async function predict() {
+			const result = document.getElementById('result');
+			result.textContent = 'Calculating...';
+			const payload = {
+				bedroom: document.getElementById('bedroom').value,
+				bathroom: document.getElementById('bathroom').value,
+				location: document.getElementById('location').value,
+				property_type: document.getElementById('property_type').value
+			};
+			try {
+				const response = await fetch('/predict', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+				const data = await response.json();
+				result.textContent = response.ok ? `Estimated Price: ${data.price_formatted}` : data.error;
+			} catch (error) {
+				result.textContent = 'Unable to reach the prediction service.';
+			}
+		}
+	</script>
+</body>
+</html>
